@@ -27,16 +27,24 @@ function createWindow() {
   } else {
     // Production: load from dist folder
     const distPath = path.join(__dirname, 'dist', 'index.html');
+    console.log('Loading production app from:', distPath);
     win.loadFile(distPath);
+    // Uncomment to debug production issues:
+    win.webContents.openDevTools();
   }
 
-  win.on('ready-to-show', () => {
-    win.show();
-  });
-
+  // Log any errors
   win.webContents.on('crashed', () => {
     console.error('App crashed');
     app.quit();
+  });
+
+  win.webContents.on('preload-error', (event, preloadPath, error) => {
+    console.error('Preload error:', error);
+  });
+
+  win.webContents.on('unresponsive', () => {
+    console.error('App unresponsive');
   });
 }
 
