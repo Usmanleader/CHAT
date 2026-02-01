@@ -1,0 +1,8 @@
+{
+  "name": "SupraChat Windows",
+  "description": "A high-performance, private chat application with a Windows 11-inspired UI, powered by Supabase for real-time messaging and Gemini for smart AI assistance.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

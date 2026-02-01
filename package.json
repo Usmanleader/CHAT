@@ -1,0 +1,50 @@
+{
+  "name": "suprachat-windows",
+  "private": true,
+  "version": "0.0.0",
+  "type": "commonjs",
+  "main": "main.js",
+  "scripts": {
+    "dev": "vite",
+    "electron-dev": "concurrently \"npm run dev\" \"node start-electron.js\"",
+    "build": "vite build",
+    "electron": "electron .",
+    "electron-build": "npm run build && electron-builder",
+    "pack": "electron-builder"
+  },
+  "dependencies": {
+    "@google/genai": "^1.39.0",
+    "@supabase/supabase-js": "^2.93.3",
+    "electron-is-dev": "^1.0.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^8.2.2",
+    "electron": "^40.1.0",
+    "electron-builder": "^26.7.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.suprachat.app",
+    "productName": "SupraChat",
+    "files": [
+      "dist/**/*",
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
+
