@@ -7,10 +7,24 @@ import DatabaseSetupModal from './components/DatabaseSetupModal';
 import { AppStatus, SupabaseConfig, UserProfile } from './types';
 import { initSupabase, checkSession, signOut, syncProfile, fetchUsers } from './services/supabaseService';
 
+console.log('App component loading...');
+
 const SUPABASE_CONFIG: SupabaseConfig = {
-  url: import.meta.env.VITE_SUPABASE_URL,
-  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY
+  url: import.meta.env.VITE_SUPABASE_URL || '',
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 };
+
+console.log('Supabase Config:', { 
+  hasUrl: !!SUPABASE_CONFIG.url,
+  hasKey: !!SUPABASE_CONFIG.anonKey,
+  url: SUPABASE_CONFIG.url
+});
+
+if (!SUPABASE_CONFIG.url || !SUPABASE_CONFIG.anonKey) {
+  console.error('❌ Missing Supabase credentials!');
+  console.error('VITE_SUPABASE_URL:', SUPABASE_CONFIG.url);
+  console.error('VITE_SUPABASE_ANON_KEY:', SUPABASE_CONFIG.anonKey ? 'SET' : 'NOT SET');
+}
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<AppStatus>(AppStatus.AUTH);
@@ -22,48 +36,73 @@ const App: React.FC = () => {
   const [tableMissing, setTableMissing] = useState(false);
 
   const initializeAppData = async () => {
-    const currentSession = await checkSession();
-    setSession(currentSession);
-    
-    if (currentSession) {
-      // Re-initialize check
-      setTableMissing(false); 
+    try {
+      console.log('Initializing app data...');
+      const currentSession = await checkSession();
+      console.log('Session check done:', !!currentSession);
+      setSession(currentSession);
       
-      const { error: syncError } = await syncProfile(currentSession.user);
-      if (syncError && (syncError as any).code === 'PGRST205') {
-        setTableMissing(true);
+      if (currentSession) {
+        setTableMissing(false); 
+        
+        try {
+          const { error: syncError } = await syncProfile(currentSession.user);
+          if (syncError && (syncError as any).code === 'PGRST205') {
+            setTableMissing(true);
+          }
+        } catch (e) {
+          console.error('Sync error:', e);
+        }
+        
+        try {
+          const { data: userList, error: fetchError } = await fetchUsers();
+          if (fetchError && (fetchError as any).code === 'PGRST205') {
+            setTableMissing(true);
+          }
+          
+          if (userList) {
+            setUsers(userList.filter((u: any) => u.id !== currentSession.user.id));
+          }
+        } catch (e) {
+          console.error('Fetch users error:', e);
+        }
+        
+        setStatus(AppStatus.CHATTING);
+      } else {
+        setStatus(AppStatus.AUTH);
       }
-      
-      const { data: userList, error: fetchError } = await fetchUsers();
-      if (fetchError && (fetchError as any).code === 'PGRST205') {
-        setTableMissing(true);
-      }
-      
-      if (userList) {
-        setUsers(userList.filter((u: any) => u.id !== currentSession.user.id));
-      }
-      setStatus(AppStatus.CHATTING);
-    } else {
+    } catch (error) {
+      console.error('❌ Error initializing app:', error);
       setStatus(AppStatus.AUTH);
     }
   };
 
   useEffect(() => {
-    initSupabase(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
-    initializeAppData();
+    try {
+      console.log('useEffect: Initializing Supabase...');
+      initSupabase(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+      initializeAppData();
 
-    const supabase = initSupabase(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      setSession(newSession);
-      if (newSession) {
-        initializeAppData();
-      } else {
-        setStatus(AppStatus.AUTH);
-        setUsers([]);
-      }
-    });
+      console.log('useEffect: Setting up auth listener...');
+      const supabase = initSupabase(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+        console.log('Auth state changed:', _event);
+        setSession(newSession);
+        if (newSession) {
+          initializeAppData();
+        } else {
+          setStatus(AppStatus.AUTH);
+          setUsers([]);
+        }
+      });
 
-    return () => subscription.unsubscribe();
+      return () => {
+        console.log('Cleaning up auth subscription...');
+        subscription.unsubscribe();
+      };
+    } catch (error) {
+      console.error('❌ Error in useEffect:', error);
+    }
   }, []);
 
   useEffect(() => {
